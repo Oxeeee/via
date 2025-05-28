@@ -15,6 +15,7 @@ import (
 	"github.com/OxytocinGroup/theca-v3/internal/server/middleware"
 	"github.com/OxytocinGroup/theca-v3/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -35,6 +36,8 @@ func New(ctx context.Context, cfg *config.Config, log *slog.Logger) *Application
 		server.Router().Use(gin.Logger())
 	}
 
+	server.Router().Use(middleware.MetricsMiddleware())
+
 	db, err := database.ConnectDatabase(ctx, cfg)
 	if err != nil {
 		log.Error("failed to connect to database", "error", err)
@@ -53,7 +56,7 @@ func New(ctx context.Context, cfg *config.Config, log *slog.Logger) *Application
 	authMiddleware := middleware.NewAuthMiddleware(cfg.JWTAccessSecret, cfg.JWTRefreshSecret)
 
 	initHandlers(server, handlers, authMiddleware)
-	initSwaggerHandlers(server)
+	initPrivateHandlers(server)
 
 	app := &Application{
 		cfg:            cfg,
@@ -72,10 +75,12 @@ func initHandlers(server *server.Server, handlers *handlers.Handler, authMiddlew
 
 	sec := v1.Group("/api", authMiddleware.JWTMiddleware())
 	sec.DELETE("/logout", handlers.Logout)
+
 }
 
-func initSwaggerHandlers(server *server.Server) {
-	server.SwaggerRouter().GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+func initPrivateHandlers(server *server.Server) {
+	server.PrivateRouter().GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+	server.PrivateRouter().GET("/metrics", gin.WrapH(promhttp.Handler()))
 }
 
 func (a *Application) Run() {

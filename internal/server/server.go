@@ -18,8 +18,8 @@ type Server struct {
 	log           *slog.Logger
 	publicServer  *http.Server
 	publicRouter  *gin.Engine
-	swaggerServer *http.Server
-	swaggerRouter *gin.Engine
+	privateServer *http.Server
+	privateRouter *gin.Engine
 }
 
 func New(cfg *config.Config, log *slog.Logger) *Server {
@@ -31,32 +31,33 @@ func New(cfg *config.Config, log *slog.Logger) *Server {
 	publicRouter := gin.New()
 	publicRouter.Use(gin.Recovery())
 	publicRouter.Use(middleware.PublicCORS())
+	publicRouter.Use(middleware.MetricsMiddleware())
 	publicServer := &http.Server{
 		Addr:    cfg.PublicAddr,
 		Handler: publicRouter,
 	}
 
-	swaggerRouter := gin.New()
-	swaggerRouter.Use(gin.Recovery())
-	swaggerRouter.Use(middleware.PublicCORS())
-	swaggerServer := &http.Server{
+	privateRouter := gin.New()
+	privateRouter.Use(gin.Recovery())
+	privateRouter.Use(middleware.PublicCORS())
+	privateServer := &http.Server{
 		Addr:    cfg.SwaggerAddr,
-		Handler: swaggerRouter,
+		Handler: privateRouter,
 	}
-	
+
 	return &Server{
 		cfg:           cfg,
 		log:           log,
 		publicServer:  publicServer,
 		publicRouter:  publicRouter,
-		swaggerServer: swaggerServer,
-		swaggerRouter: swaggerRouter,
+		privateServer: privateServer,
+		privateRouter: privateRouter,
 	}
 }
 
 func (s *Server) Start() {
 	go s.startServer("publicServer", s.publicServer)
-	go s.startServer("swaggerServer", s.swaggerServer)
+	go s.startServer("swaggerServer", s.privateServer)
 }
 
 func (s *Server) Stop() {
@@ -79,7 +80,7 @@ func (s *Server) Stop() {
 
 	go func() {
 		defer wg.Done()
-		if err := s.swaggerServer.Shutdown(ctx); err != nil {
+		if err := s.privateServer.Shutdown(ctx); err != nil {
 			log.Error("Failed to shutdown swagger server", "error", err)
 		}
 	}()
@@ -102,6 +103,6 @@ func (s *Server) Router() *gin.Engine {
 	return s.publicRouter
 }
 
-func (s *Server) SwaggerRouter() *gin.Engine {
-	return s.swaggerRouter
+func (s *Server) PrivateRouter() *gin.Engine {
+	return s.privateRouter
 }

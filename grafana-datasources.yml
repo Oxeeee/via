@@ -1,0 +1,13 @@
+apiVersion: 1
+
+datasources:
+  - name: Via Metrics
+    type: prometheus
+    access: proxy
+    url: http://host.docker.internal:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: GET
+      prometheusType: Prometheus
+      prometheusVersion: 2.40.0 

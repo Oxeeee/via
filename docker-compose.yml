@@ -1,0 +1,138 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: via-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-postgres}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-postgres}
+      POSTGRES_DB: ${PG_DB:-postgres}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - via-network
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: via-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - grafana-config:/etc/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - via-network
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: via-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - via-network
+
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: via-redis
+  #   restart: unless-stopped
+  #   command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-4&<E?h80#1si}
+  #   ports:
+  #     - "6380:6379"
+  #   environment:
+  #     REDIS_PASSWORD: ${REDIS_PASSWORD:-4&<E?h80#1si}
+  #   volumes:
+  #     - redis-data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-4&<E?h80#1si}", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 10s
+  #   networks:
+  #     - via-network
+
+  # via-server:
+  #   build: .
+  #   container_name: via-server
+  #   restart: unless-stopped
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   environment:
+  #     LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  #     IS_LOCAL_RUN: ${IS_LOCAL_RUN:-false}
+  #     PG_NAME: postgres
+  #     PG_USER: ${PG_USER:-postgres}
+  #     PG_DB: ${PG_DB:-postgres}
+  #     PG_PASSWORD: ${PG_PASSWORD:-postgres}
+  #     PG_PORT: 5432
+  #     PG_SSL_MODE: ${PG_SSL_MODE:-disable}
+  #     PUBLIC_ADDR: :8080
+  #     JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+  #     JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+  #     SWAGGER_ADDR: :8081
+  #     SMTP_API_KEY: ${SMTP_API_KEY}
+  #     REDIS_ADDR: redis:6379
+  #     REDIS_PASSWORD: ${REDIS_PASSWORD:-4&<E?h80#1si}
+  #   ports:
+  #     - "8080:8080"
+  #     - "8081:8081"
+  #   networks:
+  #     - via-network
+
+networks:
+  via-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    name: via-postgres-data
+  redis-data:
+    name: via-redis-data
+  grafana-data:
+    name: via-grafana-data
+  grafana-config:
+    name: via-grafana-config
+  prometheus-data:
+    name: via-prometheus-data

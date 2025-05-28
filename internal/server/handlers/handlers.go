@@ -3,6 +3,7 @@ package handlers
 import (
 	"log/slog"
 
+	"github.com/OxytocinGroup/theca-v3/internal/metrics"
 	"github.com/OxytocinGroup/theca-v3/internal/model"
 	"github.com/OxytocinGroup/theca-v3/internal/service"
 	errors "github.com/OxytocinGroup/theca-v3/internal/utils/errors"
@@ -35,12 +36,14 @@ func (h *Handler) Register(c *gin.Context) {
 	var req model.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Debug("binding json", "err", err, "req", req)
+		metrics.RecordError(c.Request.Context(), "validation_error", c.Request.URL.Path, c.Request.Method)
 		errors.RespondWithError(c, errors.New(errors.CodeInvalidRequest, "Неверный формат запроса"))
 		return
 	}
 
 	err := h.service.Register(c.Request.Context(), req.Email, req.Username, req.Password)
 	if err != nil {
+		metrics.RecordError(c.Request.Context(), "registration_error", c.Request.URL.Path, c.Request.Method)
 		errors.RespondWithError(c, err)
 		return
 	}
@@ -65,12 +68,14 @@ func (h *Handler) Login(c *gin.Context) {
 	var req model.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Debug("binding json", "err", err, "req", req)
+		metrics.RecordError(c.Request.Context(), "validation_error", c.Request.URL.Path, c.Request.Method)
 		errors.RespondWithError(c, errors.New(errors.CodeInvalidRequest, "Неверный формат запроса"))
 		return
 	}
 
 	accessToken, refreshToken, err := h.service.Login(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
+		metrics.RecordError(c.Request.Context(), "authentication_error", c.Request.URL.Path, c.Request.Method)
 		errors.RespondWithError(c, err)
 		return
 	}
