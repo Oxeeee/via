@@ -1,0 +1,157 @@
+basePath: /v1
+definitions:
+  errors.Error:
+    properties:
+      code:
+        $ref: '#/definitions/errors.ErrorCode'
+      err: {}
+      message:
+        type: string
+    type: object
+  errors.ErrorCode:
+    enum:
+    - UNKNOWN_ERROR
+    - INVALID_REQUEST
+    - INTERNAL_ERROR
+    - NOT_FOUND
+    - UNAUTHORIZED
+    - FORBIDDEN
+    - USER_NOT_FOUND
+    - USER_ALREADY_EXISTS
+    - INVALID_PASSWORD
+    - INVALID_EMAIL
+    - INVALID_USERNAME
+    - DATA_NOT_FOUND
+    - DATA_INVALID
+    - DATA_CONFLICT
+    type: string
+    x-enum-varnames:
+    - CodeUnknownError
+    - CodeInvalidRequest
+    - CodeInternalError
+    - CodeNotFound
+    - CodeUnauthorized
+    - CodeForbidden
+    - CodeUserNotFound
+    - CodeUserAlreadyExists
+    - CodeInvalidPassword
+    - CodeInvalidEmail
+    - CodeInvalidUsername
+    - CodeDataNotFound
+    - CodeDataInvalid
+    - CodeDataConflict
+  model.LoginRequest:
+    properties:
+      password:
+        minLength: 6
+        type: string
+      username:
+        minLength: 3
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  model.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      username:
+        minLength: 3
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Bookmarks manager API
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  title: Theca API
+  version: "1.0"
+paths:
+  /api/logout:
+    delete:
+      consumes:
+      - application/json
+      description: Logout a user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.Error'
+      summary: Logout
+      tags:
+      - user
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Login a user
+      parameters:
+      - description: Login request
+        in: body
+        name: loginRequest
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.Error'
+      summary: Login
+      tags:
+      - user
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user
+      parameters:
+      - description: Register request
+        in: body
+        name: registerRequest
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/errors.Error'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/errors.Error'
+      summary: Register
+      tags:
+      - user
+swagger: "2.0"
